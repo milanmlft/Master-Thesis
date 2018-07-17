@@ -3,14 +3,7 @@
 # -------------------------------------------------------------------------------
 # Module that defines the Population and Clone classes which can be used to
 # simulate a tumor population.
-# Described in more detail in ModelingTumorHeterogeneity.ipynb
-#
-#
-# LAST Changes (from 2018-05-05_ModelingTumorHeterogeneity.ipynb):
-#
-#   * Changed `run_simulations()` so it saves the final_data dataframes of
-#       the simulated populations immediately by pickling
-#   * Added `tqdm` functionality
+# Described in more detail in ModelingTumorHeterogeneity.ipynb (in Notebooks)
 # -------------------------------------------------------------------------------
 
 import numpy as np
@@ -22,21 +15,22 @@ from ThesisScripts.Analyses import final_data
 class Population:
     '''
     The Population class will be used to simulate the whole tumor population, which consists of clones and their subclones
-    When creating a Population object, a maximal generation (max_gen) and mutation rate (q) should be given
 
     Attributes:
+    -----------
         * gen: the generation or age of the population, starting at 0
         * size_lim: size to which the population grows
-        * death_frac: the fraction of the number of divisions that will be counted as deaths
-        * start_clone: the initial clone within the population, represented by the Clone class, starting with 1 clone
-        * clones: a list to store all clones present in the population, starting with the inital clone
-        * mutprob = starting mutation probability; the probability of generating a mutant for the start clone
+        * mutfactor: factor with which mutation rates of subclones will increase to simulate mutator phenotype (default 1)
+        * death_frac: the fraction of the total population that will die
         * size: total population size, which is the sum of all clones and subclones (calculated with get_size() method)
         * size_vec: vector to store evolution of population sizes (start size = self.size = 1)
         * mut_vec: vector to store number of mutations that occured in each generation (initial value at generation 0 = 0)
+        * mutprob = starting mutation probability; the probability of generating a mutant for the start clone
+        * start_clone: the initial clone within the population, represented by the Clone class, starting with 1 clone
+        * clones: a list to store all clones present in the population, starting with the inital clone
         * selection: if > 0: determines the variance in selective advantage for the clones
     '''
-    def __init__(self, size_lim, mutprob, mutfactor, death_frac=0, selection=0):
+    def __init__(self, size_lim, mutprob, mutfactor=1, death_frac=0, selection=0):
         self.gen = 0
         self.size_lim = size_lim
         self.mutfactor = mutfactor
@@ -50,17 +44,14 @@ class Population:
 
     def get_size(self):
         '''Calculates the total population size as the sum of all individual (sub)clone sizes'''
-        N = sum((x.size for x in self.clones)) # use generator to sum all clone sizes
+        N = sum((x.size for x in self.clones))
         return N
 
     def divisions_deaths(self):
         '''
-        Calculates the number of dividing cells for each clone at the current generation, based on a binomial distribution of the total population
-        whereby the total number of dividing cells is limited within the population.
+        Calculates the number of dividing cells for each clone at the current generation, based on a multinomial distribution of the total population
         Clone weights are used as a measure of selective advantage when sampling dividers
-        For each subclone in the subclones list, the pool from which the binomial distribution chooses is decreased by the sum of dividers of all preceding clones
-        the division rate is the fraction of the clone size to the total population size minus the sizes of all preceding clones.
-        The number of deaths is calculated stochastically in a similar way but using a Hypergeometric distribution.
+        The number of deaths is calculated stochastically in a similar way but using a multinomial hypergeometric distribution.
         '''
         N = self.get_size()       # total population size
         alpha = self.death_frac   # fraction of deaths
@@ -143,12 +134,13 @@ class Population:
         self.mut_vec = np.array(self.mut_vec)
         self.size_vec = np.array(self.size_vec)
 
+        # adjust length of clone size vectors so they all have equal lengths
+        # by inserting 0's at the start of the vector (size 0 before they occur)
         for clone in self.clones:
-            while len(clone.size_vec) < len(self.size_vec):   # adjust length of clone size vector
+            while len(clone.size_vec) < len(self.size_vec):
                 clone.size_vec.insert(0,0)
             clone.size_vec = np.array(clone.size_vec)         # convert to numpy array
 
-        #print("Simulation completed succesfully\n")
 
 
 
@@ -158,6 +150,8 @@ class Clone:
     Each mutation within a clone leads to a new subclone, which is in turn a clone that grows and can generate subclones of itself.
 
     Attributes:
+        * population: points to the Population class objects to which the clone belongs
+        * parent: the parent clone
         * birthday: generation at which the clone was generated
         * size: amount of cells within the clone, start size is always 1
         * dividers: number of cells that will divide (calculated by divisions_deaths method in Population class)
@@ -165,14 +159,12 @@ class Clone:
         * mutators: number of cells that will mutate
         * subclones: list of subclones that originated from mutations within the current clone, each subclone is in turn a new clone
         * ID: each clone is identified by an ID, this ID is composed of the ancestor ID and a number
-        * mutrate: clone specific mutation rate, passed on and increased from its ancestor
-        * num_mutations: number of mutations carried by the clone, this number remains constant
+        * mutrate: clone specific mutation rate, passed on and increased (in case of mutator phenotype) from its ancestor
+        * num_mutations: number of mutations carried by this clone, this number remains constant
         * subid: a number that keeps track of how many subclones have occured within the clone, and is used to assign a unique ID to new subclones
         * size_vec: a vector to store the evolution of the sizes of the clone,
-            its length adjusted to the generation the population is currently in (= birthday + 1)
-        * weight: the weight that will be used to reflect the selective advantage of the clone when calculating the # dividers in Population.divisions_deaths()
-        * parent: the parent clone
-        * color: fixed color for the clone to be used in visualizations
+        * weight: the weight that reflects the selective advantage of the clone
+        * rgb_color: fixed color for the clone to be used in visualizations
     '''
     def __init__(self, population, ID, q, parent, num_mutations, weight):
         self.population = population
@@ -200,16 +192,17 @@ class Clone:
         Calculates the number of cells that will mutate (mutators) within the clone, the number of which
             is chosen randomly according to a binomial distribution from the clone dividers
         Each mutation leads to a new clone and decreases the clone size
-        For each new subclone, a new mutation rate q is calculated as an increase to that of its parent
-        For each new subclone, a new weight is sampled from a gamme distribution around the weight of the ancestor
+        For each new subclone, a new mutation rate q is calculated as an increase to that of its parent (in case of mutator phenotype)
+        For each new subclone, a new weight is sampled from a gamma distribution around the weight of the ancestor (in case of selection)
         The new size is appended to the size vector
         Returns the list new_subs, containing the new subclones generated at the current generation, which can
             then be used by the Population class to keep track of all new subclones
         '''
         q = self.mutrate                       # clone specific mutation probability
         mutfactor = self.population.mutfactor  # factor with which q will increase for subclones
-        new_q = mutfactor*q          # calculate new mutation rate for subclones, based on parent's mutation rate
+        new_q = mutfactor*q                    # calculate new mutation rate for subclones, based on parent's mutation rate
         if new_q > 1:
+            # report when subclones have reached the maximally attainable mutation probability of 1
             print("Subclones of clone %s have reached q = 1" %(self.ID))
             new_q = 1
 
@@ -226,7 +219,6 @@ class Clone:
 
 
         for i in range(self.mutators):
-
             # calculate new weight for every new subclone, based on parent's weight, from gamma distribution
             if self.population.selection > 0:
                 new_weight = np.random.gamma(shape, scale)
@@ -291,6 +283,8 @@ class Clone:
         return rgb
 
 
+
+
 def run_simulations(path_prefix, n, size_lim, mutprob, mutfactor, death_frac, selection):
     '''
     Runs multiple Population simulations with the same parameters.
@@ -307,7 +301,7 @@ def run_simulations(path_prefix, n, size_lim, mutprob, mutfactor, death_frac, se
 
     Returns:
     --------
-    * data_list : list, contains the final_data dataframe of each simulated population
+    * data_list : list, contains the final_data (see Analyses.py) dataframe of each simulated population
     '''
 
     data_list = []
@@ -320,7 +314,5 @@ def run_simulations(path_prefix, n, size_lim, mutprob, mutfactor, death_frac, se
         file_path = path_prefix + 'population_' + str(i)  + '.pkl.gz'
         data.to_pickle(file_path, compression='gzip')
         data_list.append(data)
-        #if len(data_list) % 100 == 0:   # get an update after each 100th population simulated
-        #    print("Populations simulated:", len(data_list))
 
     return data_list
