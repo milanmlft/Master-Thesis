@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------
 # Module that defines the Population and Clone classes which can be used to
 # simulate a tumor population.
-# Described in more detail in ModelingTumorHeterogeneity.ipynb (in Notebooks)
+# Described in more detail in Model.ipynb (in Notebooks)
 # -------------------------------------------------------------------------------
 
 import numpy as np
