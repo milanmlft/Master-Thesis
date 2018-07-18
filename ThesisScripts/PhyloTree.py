@@ -19,20 +19,11 @@ def build_tree(population, det_lim=1, log=False):
             one by default, so that only alive clones are taken into account.
         A log-scale can be set which will be used to calculate the node sizes as the log10 of the clone size'''
 
-
-
     def tree_layout(node):
         '''Tree layout function to define the layout of each node within the tree'''
-
         hex_color = '#%02X%02X%02X' %(node.rgb_color)
         node.img_style["fgcolor"] = hex_color  # set color of node
         node.img_style["size"] = node.weight   # set size of node
-
-        #nameFace = faces.TextFace(node.name, fsize=12, fgcolor="Black")  # add clone ID as label to node
-        #nameFace.rotation = -90
-        #nameFace.tight_text = True
-        #node.add_face(nameFace, column=0, position="branch-top")
-
 
 
     start_clone = population.start_clone
@@ -47,7 +38,8 @@ def build_tree(population, det_lim=1, log=False):
     def subtree(clone):
         '''Helper function to generate the subtree for each subclone
             Recursively called to include all subclones situated under given clone'''
-        distance = clone.birthday - clone.parent.birthday     # calculate branch distance as difference between clone and parent birthdays
+        # calculate branch distance as difference between clone and parent birthdays
+        distance = clone.birthday - clone.parent.birthday
         s = Tree(name=clone.ID, dist=distance)          # set clone as root of subtree
         if log == True:
             size = 10*np.log10(clone.get_family_size())
