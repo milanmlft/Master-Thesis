@@ -3,23 +3,6 @@
 # -------------------------------------------------------------------------------
 # Module that defines the functions used for the analyses of a simulated tumor
 # population, defined in MyModel.py
-#
-# LAST Changes (12/05/2018, from Analyses-V5.ipynb):
-#
-#   * changed reconstruct_mutational_timeline() to use dimensionless time
-#
-#
-# LAST changes (4/05/2018, from MultipleSimulationsAnalyses-V4.ipynb)
-#
-#   * all functions: changed to use final_data dataframes as input
-#   * added `get_total_mutations()` function
-#
-#
-# LAST changes (14/5/2018, from Sampling_method.ipynb)
-#
-#   * added `sample()` function
-#
-#   * added "sampled" parameter to all analysis functions
 # -------------------------------------------------------------------------------
 
 import numpy as np
@@ -27,7 +10,6 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats
 import matplotlib.pyplot as plt
-
 
 
 def final_data(pop):
@@ -125,6 +107,11 @@ def sample(data, size, det_lim):
     return sampled_clones
 
 
+#-----------------------------------------------------------------------------------------------------------
+# Single population analyses
+# The following functions are used to analyze a single simulated population
+#-----------------------------------------------------------------------------------------------------------
+
 
 def num_mutations_evolution(population):
     '''Return DataFrame containing the evolution of clone.num_mutations over the generations and a figure
@@ -211,9 +198,9 @@ def fit_cumulative_mutations(data, sampled=False, det_lim=1, plot=False):
 
     Returns
     -------
-        * raw_data: raw data consisting of a DataFrame with 1/f and corresponding Cumulative count
-        * r_value: R2 value of the linear regression between the cumulative count and 1/f
-        * fig (if plot==True): plot of M(f) and the linear regression fit
+    * raw_data: raw data consisting of a DataFrame with 1/f and corresponding Cumulative count
+    * r_value: R2 value of the linear regression between the cumulative count and 1/f
+    * fig (if plot==True): plot of M(f) and the linear regression fit
     '''
     # filter out start clone and clones with size < det_lim
     data = data.loc[data['Family size'] >= det_lim].iloc[1:]
@@ -263,21 +250,23 @@ def heterogeneity(data, sampled=False, det_lim=1):
 
 
 def reconstruct_mutational_timeline(data, alpha, sampled=False, det_lim=1):
-    '''Reconstructs mutational history of the population from allele frequencies,
+    '''
+    Reconstructs mutational history of the population from allele frequencies,
         in units of population size doublings.
 
-        Parameters:
-        -----------
-            * data : final_data() dataframe format
-            * alpha : death fraction of the analyzed population
-            * sampled : use sampled data? (yes if True)
-            * det_lim : detection limit used to filter out small clones
+    Parameters:
+    -----------
+    * data : final_data() dataframe format
+    * alpha : death fraction of the analyzed population
+    * sampled : use sampled data? (yes if True)
+    * det_lim : detection limit used to filter out small clones
 
-        Returns 3 arrays:
-        -------
-            * reconstructed timepoints at which mutations occurred
-            * reconstructed population sizes
-            * errors: deviation of the reconstructed timepoint from the real one, absolute value'''
+    Returns 3 arrays:
+    -------
+    * reconstructed timepoints at which mutations occurred
+    * reconstructed population sizes
+    * errors: deviation of the reconstructed timepoint from the real one, absolute value
+    '''
 
     clones = data.loc[data["Final size"] >= det_lim].iloc[1:]
 
@@ -315,7 +304,9 @@ def reconstruct_mutational_timeline(data, alpha, sampled=False, det_lim=1):
 
 
 #-----------------------------------------------------------------------------------------------------------
-# MultipleSimulationsAnalyses
+# Multiple simulations analyses
+# The following functions are used to analyze an ensemble of multiple populations simulated with
+# identical parameters.
 #-----------------------------------------------------------------------------------------------------------
 
 
