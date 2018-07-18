@@ -3,18 +3,12 @@
 # -------------------------------------------------------------------------------
 # Module that defines the functions used for the data visualization of a simulated
 # tumor population, defined in MyModel.py
-#
-# LAST Changes (20/04/2018, from Visualizations.ipynb):
-#
-#   * Added notebook functions
-#
 # -------------------------------------------------------------------------------
 
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-
 
 
 def size_plots(population, det_lim=0):
